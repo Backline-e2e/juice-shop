@@ -6,7 +6,7 @@
   "ReportID": "019cce0c-901d-7ab2-8105-c2b829f2705d",
   "CreatedAt": "2026-03-08T17:24:15.773703+02:00",
   "ArtifactID": "sha256:2873bb12b475b05d6fa2d8ccc47c77a53a445a609cc248f847b973ffbf76bd98",
-  "ArtifactName": ".",
+  "ArtifactName": "https://github.com/Backline-e2e/juice-shop",
   "ArtifactType": "repository",
   "Metadata": {
     "RepoURL": "https://github.com/Backline-e2e/juice-shop.git",
