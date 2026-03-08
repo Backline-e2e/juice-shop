@@ -10,14 +10,27 @@ import { notifications, challenges } from '../../data/datacache'
 import * as challengeUtils from '../challengeUtils'
 import * as security from '../insecurity'
 
+interface ServerToClientEvents {
+  'server started': () => void
+  'challenge solved': (notification: any) => void
+  'code challenge solved': (notification: any) => void
+}
+
+interface ClientToServerEvents {
+  'notification received': (data: any) => void
+  verifyLocalXssChallenge: (data: any) => void
+  verifySvgInjectionChallenge: (data: any) => void
+  verifyCloseNotificationsChallenge: (data: any) => void
+}
+
 let firstConnectedSocket: any = null
 
 const globalWithSocketIO = global as typeof globalThis & {
-  io: SocketIOClientStatic & Server
+  io: SocketIOClientStatic & Server<ClientToServerEvents, ServerToClientEvents>
 }
 
 const registerWebsocketEvents = (server: any) => {
-  const io = new Server(server, { cors: { origin: 'http://localhost:4200' } })
+  const io = new Server<ClientToServerEvents, ServerToClientEvents>(server, { cors: { origin: 'http://localhost:4200' } })
   // @ts-expect-error FIXME Type safety issue when setting global socket-io object
   globalWithSocketIO.io = io
 
