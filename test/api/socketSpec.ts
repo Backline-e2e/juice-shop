@@ -6,7 +6,7 @@
 import io from 'socket.io-client'
 
 describe('WebSocket', () => {
-  let socket: SocketIOClient.Socket
+  let socket: ReturnType<typeof io>
 
   beforeEach(done => {
     socket = io('http://localhost:3000', {

@@ -30,7 +30,7 @@ describe('/snippets/fixes/:key', () => {
 })
 
 describe('/snippets/fixes', () => {
-  let socket: SocketIOClient.Socket
+  let socket: ReturnType<typeof io>
 
   beforeEach(done => {
     socket = io('http://localhost:3000', {

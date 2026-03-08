@@ -34,7 +34,7 @@ describe('/snippets/:challenge', () => {
 })
 
 describe('snippets/verdict', () => {
-  let socket: SocketIOClient.Socket
+  let socket: ReturnType<typeof io>
 
   beforeEach(done => {
     socket = io('http://localhost:3000', {
