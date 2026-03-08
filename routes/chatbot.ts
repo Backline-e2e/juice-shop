@@ -14,11 +14,129 @@ import config from 'config'
 import download from 'download'
 import * as utils from '../lib/utils'
 import { isString } from 'lodash'
-import Bot from 'juicy-chat-bot'
 import validateChatBot from '../lib/startup/validateChatBot'
 import * as security from '../lib/insecurity'
 import * as botUtils from '../lib/botUtils'
 import { challenges } from '../data/datacache'
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { containerBootstrap } = require('@nlpjs/core-loader')
+
+interface TrainingData {
+  lang: string
+  data: Array<{
+    intent: string
+    utterances: string[]
+    answers: any[]
+  }>
+}
+
+class Users {
+  private readonly idmap: Record<string, string> = {}
+
+  addUser (token: string, name: string): void {
+    this.idmap[token] = name
+  }
+
+  get (token: string): string | undefined {
+    return this.idmap[token]
+  }
+}
+
+class Bot {
+  name: string
+  greeting: string
+  defaultResponse: { action: string, body: string }
+  training: { state: boolean, data: string }
+  private model: any
+  private readonly users: Users
+  private readonly trainingData: TrainingData
+
+  constructor (name: string, greeting: string, trainingSet: string, defaultResponse: string) {
+    this.name = name
+    this.greeting = greeting
+    this.defaultResponse = { action: 'response', body: defaultResponse }
+    this.training = {
+      state: false,
+      data: trainingSet
+    }
+    this.trainingData = JSON.parse(trainingSet)
+    this.users = new Users()
+    this.model = null
+  }
+
+  greet (token: string): string {
+    return this.render(this.greeting, token)
+  }
+
+  addUser (token: string, name: string): void {
+    this.users.addUser(token, name)
+  }
+
+  getUser (token: string): string | undefined {
+    return this.users.get(token)
+  }
+
+  render (statement: string, token: string): string {
+    const username = this.users.get(token) ?? ''
+    return statement.replace(/<bot-name>/g, this.name).replace(/<customer-name>/g, username)
+  }
+
+  async respond (query: string, token: string): Promise<any> {
+    if (!this.users.get(token)) {
+      return this.defaultResponse
+    }
+    if (this.model === null) {
+      return this.defaultResponse
+    }
+    const response = (await this.model.process(this.trainingData.lang, query)).answer
+    if (!response) {
+      return this.defaultResponse
+    } else {
+      if (response.body) {
+        response.body = this.render(response.body, token)
+      }
+      return response
+    }
+  }
+
+  async train (): Promise<void> {
+    const container = await containerBootstrap()
+    this.model = container.get('nlp')
+    const nlp = this.model
+    nlp.settings.languages = ['en']
+    nlp.settings.nlu = { log: false }
+    nlp.settings.autoSave = false
+    nlp.settings.autoLoad = false
+    nlp.settings.modelFileName = ''
+
+    this.trainingData.data.forEach((query) => {
+      query.utterances.forEach((utterance) => {
+        nlp.addDocument(this.trainingData.lang, utterance, query.intent)
+      })
+      query.answers.forEach((answer) => {
+        nlp.addAnswer(this.trainingData.lang, query.intent, answer)
+      })
+    })
+
+    await nlp.train()
+    this.training.state = true
+  }
+
+  get factory (): any {
+    return {
+      run: (code: string): any => {
+        if (code.startsWith('currentUser(')) {
+          const tokenMatch = code.match(/currentUser\(['"]([^'"]+)['"]\)/)
+          if (tokenMatch) {
+            return this.users.get(tokenMatch[1])
+          }
+        }
+        return undefined
+      }
+    }
+  }
+}
 
 let trainingFile = config.get<string>('application.chatBot.trainingData')
 let testCommand: string
@@ -48,7 +166,7 @@ export async function initializeChatbot () {
 
     testCommand = JSON.parse(trainingSet).data[0].utterances[0]
     bot = new Bot(config.get('application.chatBot.name'), config.get('application.chatBot.greeting'), trainingSet, config.get('application.chatBot.defaultResponse'))
-    return bot.train()
+    await bot.train()
   })()
 
   return await initializationPromise
