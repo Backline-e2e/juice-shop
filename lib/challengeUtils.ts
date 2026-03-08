@@ -13,10 +13,23 @@ import { type Server } from 'socket.io'
 import { AllHtmlEntities as Entities } from 'html-entities'
 import { challenges, notifications } from '../data/datacache'
 
+interface ServerToClientEvents {
+  'server started': () => void
+  'challenge solved': (notification: any) => void
+  'code challenge solved': (notification: any) => void
+}
+
+interface ClientToServerEvents {
+  'notification received': (data: any) => void
+  verifyLocalXssChallenge: (data: any) => void
+  verifySvgInjectionChallenge: (data: any) => void
+  verifyCloseNotificationsChallenge: (data: any) => void
+}
+
 const entities = new Entities()
 
 const globalWithSocketIO = global as typeof globalThis & {
-  io: SocketIOClientStatic & Server
+  io: SocketIOClientStatic & Server<ClientToServerEvents, ServerToClientEvents>
 }
 
 export const solveIf = function (challenge: any, criteria: () => any, isRestore: boolean = false) {
